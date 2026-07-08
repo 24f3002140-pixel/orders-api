@@ -4,20 +4,21 @@ from fastapi.responses import JSONResponse
 from typing import Optional
 import time
 import json
+import urllib.parse
 from datetime import datetime
 
 app = FastAPI()
 
-# Enable CORS
+# CORRECTED CORS CONFIGURATION
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,   # <-- FIXED
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Configuration - YOUR ASSIGNED VALUES
+# Configuration
 TOTAL_ORDERS = 42
 RATE_LIMIT = 16
 WINDOW_SECONDS = 10
@@ -116,9 +117,10 @@ async def get_orders(
     start_id = 1
     if cursor:
         try:
-            decoded = json.loads(cursor)
-            start_id = decoded.get("last_id", 0) + 1
-        except:
+            decoded_cursor = urllib.parse.unquote(cursor)
+            cursor_data = json.loads(decoded_cursor)
+            start_id = cursor_data.get("last_id", 0) + 1
+        except Exception:
             raise HTTPException(status_code=400, detail="Invalid cursor")
     
     items = []
@@ -134,11 +136,11 @@ async def get_orders(
         if last_id < TOTAL_ORDERS:
             next_cursor = json.dumps({"last_id": last_id})
     
-    return {"items": items, "next_cursor": next_cursor}
+    return {
+        "items": items,
+        "next_cursor": next_cursor
+    }
 
 if __name__ == "__main__":
     import uvicorn
-    print("🔥 Server running on http://localhost:8000")
-    print("📚 API Docs: http://localhost:8000/docs")
-    print("Press CTRL+C to stop")
     uvicorn.run(app, host="0.0.0.0", port=8000)
